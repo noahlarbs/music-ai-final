@@ -132,6 +132,24 @@
             background: #667eea;
             color: white;
         }
+
+        .key-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .key-info h4 {
+            margin: 0 0 5px 0;
+            color: #1976d2;
+        }
+
+        .key-info p {
+            margin: 5px 0;
+            color: #424242;
+        }
     </style>
 </head>
 <body>
@@ -165,7 +183,47 @@
             </div>
             
             <div class="control-group">
-                <h3>⚙️ Generation Settings</h3>
+                <h3>🎼 Musical Key & Settings</h3>
+                <label for="musicalKey">Musical Key:</label>
+                <select id="musicalKey">
+                    <option value="C">C Major</option>
+                    <option value="G">G Major</option>
+                    <option value="D">D Major</option>
+                    <option value="A">A Major</option>
+                    <option value="E">E Major</option>
+                    <option value="B">B Major</option>
+                    <option value="F#">F# Major</option>
+                    <option value="C#">C# Major</option>
+                    <option value="F">F Major</option>
+                    <option value="Bb">Bb Major</option>
+                    <option value="Eb">Eb Major</option>
+                    <option value="Ab">Ab Major</option>
+                    <option value="Db">Db Major</option>
+                    <option value="Gb">Gb Major</option>
+                    <option value="Cb">Cb Major</option>
+                    <option value="Am">A Minor</option>
+                    <option value="Em">E Minor</option>
+                    <option value="Bm">B Minor</option>
+                    <option value="F#m">F# Minor</option>
+                    <option value="C#m">C# Minor</option>
+                    <option value="G#m">G# Minor</option>
+                    <option value="D#m">D# Minor</option>
+                    <option value="A#m">A# Minor</option>
+                    <option value="Dm">D Minor</option>
+                    <option value="Gm">G Minor</option>
+                    <option value="Cm">C Minor</option>
+                    <option value="Fm">F Minor</option>
+                    <option value="Bbm">Bb Minor</option>
+                    <option value="Ebm">Eb Minor</option>
+                    <option value="Abm">Ab Minor</option>
+                </select>
+
+                <div id="keyInfo" class="key-info" style="display: none;">
+                    <h4>Key Information</h4>
+                    <p id="keyNotes"></p>
+                    <p id="keyChords"></p>
+                </div>
+                
                 <label for="soloLength">Solo Length (bars):</label>
                 <select id="soloLength">
                     <option value="4">4 bars</option>
@@ -189,6 +247,12 @@
                     <option value="medium" selected>Medium</option>
                     <option value="complex">Complex</option>
                     <option value="virtuoso">Virtuoso</option>
+                </select>
+                
+                <label for="notationType">Notation Type:</label>
+                <select id="notationType">
+                    <option value="sheet">Sheet Music</option>
+                    <option value="tab">Guitar Tablature</option>
                 </select>
             </div>
             
@@ -222,6 +286,40 @@
         let currentSolo = null;
         let audioContext = null;
         let isPlaying = false;
+        
+        // Key information database
+        const keyInfo = {
+            'C': { notes: 'C D E F G A B', chords: 'C Dm Em F G Am Bdim', type: 'major' },
+            'G': { notes: 'G A B C D E F#', chords: 'G Am Bm C D Em F#dim', type: 'major' },
+            'D': { notes: 'D E F# G A B C#', chords: 'D Em F#m G A Bm C#dim', type: 'major' },
+            'A': { notes: 'A B C# D E F# G#', chords: 'A Bm C#m D E F#m G#dim', type: 'major' },
+            'E': { notes: 'E F# G# A B C# D#', chords: 'E F#m G#m A B C#m D#dim', type: 'major' },
+            'B': { notes: 'B C# D# E F# G# A#', chords: 'B C#m D#m E F# G#m A#dim', type: 'major' },
+            'F#': { notes: 'F# G# A# B C# D# E#', chords: 'F# G#m A#m B C# D#m E#dim', type: 'major' },
+            'C#': { notes: 'C# D# E# F# G# A# B#', chords: 'C# D#m E#m F# G# A#m B#dim', type: 'major' },
+            'F': { notes: 'F G A Bb C D E', chords: 'F Gm Am Bb C Dm Edim', type: 'major' },
+            'Bb': { notes: 'Bb C D Eb F G A', chords: 'Bb Cm Dm Eb F Gm Adim', type: 'major' },
+            'Eb': { notes: 'Eb F G Ab Bb C D', chords: 'Eb Fm Gm Ab Bb Cm Ddim', type: 'major' },
+            'Ab': { notes: 'Ab Bb C Db Eb F G', chords: 'Ab Bbm Cm Db Eb Fm Gdim', type: 'major' },
+            'Db': { notes: 'Db Eb F Gb Ab Bb C', chords: 'Db Ebm Fm Gb Ab Bbm Cdim', type: 'major' },
+            'Gb': { notes: 'Gb Ab Bb Cb Db Eb F', chords: 'Gb Abm Bbm Cb Db Ebm Fdim', type: 'major' },
+            'Cb': { notes: 'Cb Db Eb Fb Gb Ab Bb', chords: 'Cb Dbm Ebm Fb Gb Abm Bbdim', type: 'major' },
+            'Am': { notes: 'A B C D E F G', chords: 'Am Bdim C Dm Em F G', type: 'minor' },
+            'Em': { notes: 'E F# G A B C D', chords: 'Em F#dim G Am Bm C D', type: 'minor' },
+            'Bm': { notes: 'B C# D E F# G A', chords: 'Bm C#dim D Em F#m G A', type: 'minor' },
+            'F#m': { notes: 'F# G# A B C# D E', chords: 'F#m G#dim A Bm C#m D E', type: 'minor' },
+            'C#m': { notes: 'C# D# E F# G# A B', chords: 'C#m D#dim E F#m G#m A B', type: 'minor' },
+            'G#m': { notes: 'G# A# B C# D# E F#', chords: 'G#m A#dim B C#m D#m E F#', type: 'minor' },
+            'D#m': { notes: 'D# E# F# G# A# B C#', chords: 'D#m E#dim F# G#m A#m B C#', type: 'minor' },
+            'A#m': { notes: 'A# B# C# D# E# F# G#', chords: 'A#m B#dim C# D#m E#m F# G#', type: 'minor' },
+            'Dm': { notes: 'D E F G A Bb C', chords: 'Dm Edim F Gm Am Bb C', type: 'minor' },
+            'Gm': { notes: 'G A Bb C D Eb F', chords: 'Gm Adim Bb Cm Dm Eb F', type: 'minor' },
+            'Cm': { notes: 'C D Eb F G Ab Bb', chords: 'Cm Ddim Eb Fm Gm Ab Bb', type: 'minor' },
+            'Fm': { notes: 'F G Ab Bb C Db Eb', chords: 'Fm Gdim Ab Bbm Cm Db Eb', type: 'minor' },
+            'Bbm': { notes: 'Bb C Db Eb F Gb Ab', chords: 'Bbm Cdim Db Ebm Fm Gb Ab', type: 'minor' },
+            'Ebm': { notes: 'Eb F Gb Ab Bb Cb Db', chords: 'Ebm Fdim Gb Abm Bbm Cb Db', type: 'minor' },
+            'Abm': { notes: 'Ab Bb Cb Db Eb Fb Gb', chords: 'Abm Bbdim Cb Dbm Ebm Fb Gb', type: 'minor' }
+        };
         
         // Style presets with detailed descriptions
         const stylePresets = {
@@ -267,6 +365,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             setupStylePresets();
             setupEventListeners();
+            updateKeyInfo();
         });
         
         function setupStylePresets() {
@@ -299,6 +398,24 @@
                     customInput.style.display = 'none';
                 }
             });
+
+            document.getElementById('musicalKey').addEventListener('change', updateKeyInfo);
+        }
+
+        function updateKeyInfo() {
+            const selectedKey = document.getElementById('musicalKey').value;
+            const keyInfoDiv = document.getElementById('keyInfo');
+            const keyNotesP = document.getElementById('keyNotes');
+            const keyChordsP = document.getElementById('keyChords');
+
+            if (keyInfo[selectedKey]) {
+                const info = keyInfo[selectedKey];
+                keyNotesP.textContent = `Notes in ${selectedKey}: ${info.notes}`;
+                keyChordsP.textContent = `Chords in ${selectedKey}: ${info.chords}`;
+                keyInfoDiv.style.display = 'block';
+            } else {
+                keyInfoDiv.style.display = 'none';
+            }
         }
         
         function showStatus(message, type = 'loading') {
@@ -319,6 +436,7 @@
                 // Get user settings
                 const style = document.getElementById('guitarStyle').value;
                 const customStyle = document.getElementById('customStyle').value;
+                const key = document.getElementById('musicalKey').value;
                 const length = document.getElementById('soloLength').value;
                 const tempo = document.getElementById('tempo').value;
                 const complexity = document.getElementById('complexity').value;
@@ -331,8 +449,12 @@
                     styleDescription = stylePresets[style].description;
                 }
                 
+                // Add key information to the description
+                const keyInfo = getKeyInfo(key);
+                styleDescription += ` in the key of ${key}`;
+                
                 // Simulate AI generation (replace with actual API calls)
-                await simulateGeneration(styleDescription, length, tempo, complexity);
+                await simulateGeneration(styleDescription, key, length, tempo, complexity);
                 
                 showStatus('✅ Solo generated successfully!', 'success');
                 document.getElementById('playButton').style.display = 'inline-block';
@@ -342,41 +464,77 @@
                 showStatus('❌ Error generating solo: ' + error.message, 'error');
             }
         }
+
+        function getKeyInfo(key) {
+            return keyInfo[key] || { notes: '', chords: '', type: 'major' };
+        }
         
-        async function simulateGeneration(style, length, tempo, complexity) {
+        async function simulateGeneration(style, key, length, tempo, complexity) {
             // Simulate API delay
             await new Promise(resolve => setTimeout(resolve, 2000));
             
             // Generate mock solo data (replace with actual AI model)
-            currentSolo = generateMockSolo(style, length, tempo, complexity);
+            currentSolo = generateMockSolo(style, key, length, tempo, complexity);
             
             // Display notation
             renderNotation(currentSolo);
         }
         
-        function generateMockSolo(style, length, tempo, complexity) {
-            // This is a placeholder - replace with actual AI generation
-            const notes = [];
-            const baseNotes = [60, 62, 64, 65, 67, 69, 71, 72]; // C major scale
-            const bars = parseInt(length);
+        function generateMockSolo(style, key, length, tempo, complexity) {
+            // Get key information
+            const keyInfo = getKeyInfo(key);
+            const keyNotes = keyInfo.notes.split(' ').map(note => note.trim());
             
-            for (let bar = 0; bar < bars; bar++) {
-                for (let beat = 0; beat < 4; beat++) {
-                    const note = baseNotes[Math.floor(Math.random() * baseNotes.length)];
+            // Convert note names to MIDI numbers (simplified)
+            const noteToMidi = {
+                'C': 60, 'C#': 61, 'D': 62, 'D#': 63, 'E': 64, 'F': 65, 'F#': 66,
+                'G': 67, 'G#': 68, 'A': 69, 'A#': 70, 'B': 71
+            };
+            
+            // Get available notes in the key
+            const availableNotes = keyNotes.map(note => {
+                const baseNote = note.replace(/[#b]/g, '');
+                const midiNote = noteToMidi[baseNote] || 60;
+                return midiNote;
+            });
+            
+            const notes = [];
+            const beats_per_bar = 4;
+            const total_beats = length * beats_per_bar;
+            const beat_duration = 60.0 / tempo; // seconds per beat
+            
+            for (let beat = 0; beat < total_beats; beat++) {
+                // Add some randomness to note selection
+                if (Math.random() < 0.8) { // 80% chance of playing a note
+                    const note_pitch = availableNotes[Math.floor(Math.random() * availableNotes.length)];
+                    
+                    // Add octave variation
+                    const octave_shift = Math.floor(Math.random() * 3) - 1; // -1, 0, or 1
+                    const adjusted_pitch = note_pitch + (octave_shift * 12);
+                    
+                    // Ensure note is in guitar range (E2 to E6)
+                    const final_pitch = Math.max(40, Math.min(88, adjusted_pitch));
+                    
+                    const start_time = beat * beat_duration;
+                    const end_time = start_time + beat_duration * 0.8; // Note duration
+                    
                     notes.push({
-                        pitch: note,
-                        startTime: (bar * 4 + beat) * 0.5,
-                        endTime: (bar * 4 + beat + 0.5) * 0.5,
-                        velocity: 80
+                        pitch: final_pitch,
+                        startTime: start_time,
+                        endTime: end_time,
+                        velocity: Math.floor(Math.random() * 40) + 60 // 60-100
                     });
                 }
             }
             
             return {
                 notes: notes,
-                totalTime: bars * 2,
+                totalTime: total_beats * beat_duration,
                 tempo: tempo,
-                style: style
+                style: style,
+                key: key,
+                length_bars: length,
+                complexity: complexity
             };
         }
         
@@ -384,25 +542,210 @@
             const notationDiv = document.getElementById('notation');
             notationDiv.innerHTML = '';
             
-            // Create VexFlow rendering
-            const vf = new Vex.Flow.Factory({
-                renderer: { elementId: 'notation', width: 800, height: 200 }
-            });
+            const notationType = document.getElementById('notationType').value;
             
-            const score = vf.EasyScore();
-            const system = vf.System({ x: 10, y: 10, width: 780 });
+            if (notationType === 'sheet') {
+                renderSheetMusic(solo);
+            } else {
+                renderTablature(solo);
+            }
+        }
+        
+        function renderSheetMusic(solo) {
+            const notationDiv = document.getElementById('notation');
             
-            // Convert notes to VexFlow format
-            const formattedNotes = solo.notes.map(note => {
-                const noteName = getNoteName(note.pitch);
-                return `${noteName}/q`;
-            }).join(', ');
+            try {
+                // Create VexFlow rendering for sheet music
+                const vf = new Vex.Flow.Factory({
+                    renderer: { elementId: 'notation', width: 800, height: 200 }
+                });
+                
+                const score = vf.EasyScore();
+                const system = vf.System({ x: 10, y: 10, width: 780 });
+                
+                // Convert notes to VexFlow format
+                const formattedNotes = solo.notes.map(note => {
+                    const noteName = getNoteName(note.pitch);
+                    return `${noteName}/q`;
+                }).join(', ');
+                
+                system.addStave({
+                    voices: [score.voice(score.notes(formattedNotes, { stem: 'up' }))]
+                }).addClef('treble').addTimeSignature('4/4');
+                
+                vf.draw();
+            } catch (error) {
+                console.error('VexFlow error:', error);
+                notationDiv.innerHTML = '<p style="color: red;">Error rendering sheet music. Please try again.</p>';
+            }
+        }
+        
+        function renderTablature(solo) {
+            const notationDiv = document.getElementById('notation');
             
-            system.addStave({
-                voices: [score.voice(score.notes(formattedNotes, { stem: 'up' }))]
-            }).addClef('treble').addTimeSignature('4/4');
+            try {
+                // Use smart fingering for better tablature
+                const smartFingerings = getSmartFingering(solo.notes);
+                const tabText = solo.notes.map((note, index) => {
+                    const fingering = smartFingerings[index];
+                    return {
+                        string: fingering.string,
+                        fret: fingering.fret,
+                        note: getNoteName(note.pitch),
+                        index: index
+                    };
+                });
+                
+                // Create tablature display
+                let tabHTML = `
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; font-family: monospace;">
+                        <h4>🎸 Guitar Tablature</h4>
+                        <div style="margin: 10px 0;">
+                            <strong>Key:</strong> ${solo.key || 'Unknown'} | 
+                            <strong>Style:</strong> ${solo.style || 'Unknown'} | 
+                            <strong>Tempo:</strong> ${solo.tempo || 120} BPM
+                        </div>
+                        <div style="background: white; border: 1px solid #ddd; padding: 15px; border-radius: 5px;">
+                `;
+                
+                // Create tablature lines (6 strings)
+                for (let string = 6; string >= 1; string--) {
+                    const stringName = ['E', 'A', 'D', 'G', 'B', 'E'][6 - string];
+                    tabHTML += `<div style="display: flex; align-items: center; margin: 2px 0; font-size: 14px;">`;
+                    tabHTML += `<span style="width: 30px; font-weight: bold;">${stringName}</span>`;
+                    tabHTML += `<span style="flex: 1; border-bottom: 1px solid #ccc; padding: 0 5px;">`;
+                    
+                    // Add fret numbers for this string
+                    tabText.forEach((tabNote, index) => {
+                        if (tabNote.string === string) {
+                            tabHTML += `<span style="display: inline-block; width: 20px; text-align: center; font-weight: bold; color: #1976d2;">${tabNote.fret}</span>`;
+                        } else {
+                            tabHTML += `<span style="display: inline-block; width: 20px; text-align: center;">-</span>`;
+                        }
+                    });
+                    
+                    tabHTML += `</span></div>`;
+                }
+                
+                tabHTML += `
+                        </div>
+                        <div style="margin-top: 15px; font-size: 12px; color: #666;">
+                            <strong>Note:</strong> Numbers show fret positions on each string (EADGBE tuning)
+                        </div>
+                    </div>
+                `;
+                
+                notationDiv.innerHTML = tabHTML;
+                
+            } catch (error) {
+                console.error('Tablature rendering error:', error);
+                notationDiv.innerHTML = `
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <h4>Guitar Tablature (Simple Format)</h4>
+                        <p style="font-family: monospace; font-size: 14px;">
+                            ${solo.notes.map(note => {
+                                const fret = getFretForNote(note.pitch);
+                                const string = getStringForNote(note.pitch);
+                                return `String ${string}, Fret ${fret}`;
+                            }).join(' | ')}
+                        </p>
+                    </div>
+                `;
+            }
+        }
+        
+        function getFretForNote(midiNote) {
+            // Guitar tuning: E2, A2, D3, G3, B3, E4
+            const stringTunings = [40, 45, 50, 55, 59, 64]; // MIDI notes for open strings
             
-            vf.draw();
+            // Find the best string and fret for this note
+            let bestString = 0;
+            let bestFret = 0;
+            let minFret = 999;
+            
+            for (let string = 0; string < 6; string++) {
+                const openStringNote = stringTunings[string];
+                const fret = midiNote - openStringNote;
+                
+                if (fret >= 0 && fret <= 24 && fret < minFret) {
+                    minFret = fret;
+                    bestString = string;
+                    bestFret = fret;
+                }
+            }
+            
+            return bestFret;
+        }
+        
+        function getStringForNote(midiNote) {
+            // Return string number (1-6) for the note
+            const stringTunings = [40, 45, 50, 55, 59, 64];
+            
+            for (let string = 0; string < 6; string++) {
+                const openStringNote = stringTunings[string];
+                const fret = midiNote - openStringNote;
+                
+                if (fret >= 0 && fret <= 24) {
+                    return 6 - string; // Convert to 1-6 string numbering
+                }
+            }
+            
+            return 1; // Default to first string
+        }
+
+        // NEW: Smart fretboard logic for better fingerings
+        function getSmartFingering(notes) {
+            const stringTunings = [40, 45, 50, 55, 59, 64];
+            const fingerings = [];
+            
+            // Group notes by position to find logical fingerings
+            for (let i = 0; i < notes.length; i++) {
+                const note = notes[i];
+                const midiNote = note.pitch;
+                
+                // Find all possible positions for this note
+                const positions = [];
+                for (let string = 0; string < 6; string++) {
+                    const openStringNote = stringTunings[string];
+                    const fret = midiNote - openStringNote;
+                    
+                    if (fret >= 0 && fret <= 24) {
+                        positions.push({
+                            string: 6 - string,
+                            fret: fret,
+                            distance: Math.abs(fret - 12) // Prefer middle frets
+                        });
+                    }
+                }
+                
+                // Choose the best position based on context
+                let bestPosition = positions[0];
+                
+                if (i > 0) {
+                    // Consider previous note for smooth transitions
+                    const prevNote = fingerings[i - 1];
+                    let minDistance = 999;
+                    
+                    positions.forEach(pos => {
+                        const stringDistance = Math.abs(pos.string - prevNote.string);
+                        const fretDistance = Math.abs(pos.fret - prevNote.fret);
+                        const totalDistance = stringDistance + fretDistance;
+                        
+                        if (totalDistance < minDistance) {
+                            minDistance = totalDistance;
+                            bestPosition = pos;
+                        }
+                    });
+                } else {
+                    // For first note, prefer middle strings and frets
+                    positions.sort((a, b) => a.distance - b.distance);
+                    bestPosition = positions[0];
+                }
+                
+                fingerings.push(bestPosition);
+            }
+            
+            return fingerings;
         }
         
         function getNoteName(midiNote) {

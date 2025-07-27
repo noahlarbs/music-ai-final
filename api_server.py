@@ -41,6 +41,7 @@ class SoloRequest(BaseModel):
     length_bars: int = 8
     tempo: int = 120
     complexity: str = "medium"
+    key: str = "C"
     custom_description: Optional[str] = None
     chord_progression: Optional[List[str]] = None
     model: str = "musiclm"
@@ -84,6 +85,7 @@ async def generate_solo(request: SoloRequest):
             length_bars=request.length_bars,
             tempo=request.tempo,
             complexity=request.complexity,
+            key=request.key,
             custom_description=request.custom_description,
             chord_progression=request.chord_progression,
             model=request.model
@@ -148,7 +150,8 @@ async def example_blues_solo():
         style="blues",
         length_bars=4,
         tempo=80,
-        complexity="medium"
+        complexity="medium",
+        key="A"
     )
     return result
 
@@ -159,7 +162,8 @@ async def example_metal_solo():
         style="metal",
         length_bars=8,
         tempo=160,
-        complexity="virtuoso"
+        complexity="virtuoso",
+        key="E"
     )
     return result
 

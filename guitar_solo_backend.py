@@ -34,6 +34,7 @@ class SoloParameters:
     length_bars: int
     tempo: int
     complexity: str
+    key: str = "C"  # Musical key (e.g., "C", "Am", "G#")
     custom_description: Optional[str] = None
     chord_progression: Optional[List[str]] = None
     influence_midi: Optional[str] = None
@@ -138,13 +139,16 @@ class MusicLMGenerator(MusicAIGenerator):
         
         complexity_desc = complexity_modifiers.get(params.complexity, "")
         
+        # Add key information
+        key_desc = f"in the key of {params.key}"
+        
         # Add tempo information
         tempo_desc = f"at {params.tempo} BPM"
         
         # Add length information
         length_desc = f"{params.length_bars} bar"
         
-        prompt = f"{base_description}, {complexity_desc}, {length_desc} solo {tempo_desc}"
+        prompt = f"{base_description}, {complexity_desc}, {length_desc} solo {key_desc} {tempo_desc}"
         
         if params.chord_progression:
             chords = " ".join(params.chord_progression)
@@ -170,7 +174,59 @@ class MusicLMGenerator(MusicAIGenerator):
     def _generate_mock_solo(self, params: SoloParameters) -> Dict:
         """Generate mock solo data for development"""
         
-        # Define scale patterns for different styles
+        # Key information database
+        key_info = {
+            'C': {'notes': ['C', 'D', 'E', 'F', 'G', 'A', 'B'], 'type': 'major'},
+            'G': {'notes': ['G', 'A', 'B', 'C', 'D', 'E', 'F#'], 'type': 'major'},
+            'D': {'notes': ['D', 'E', 'F#', 'G', 'A', 'B', 'C#'], 'type': 'major'},
+            'A': {'notes': ['A', 'B', 'C#', 'D', 'E', 'F#', 'G#'], 'type': 'major'},
+            'E': {'notes': ['E', 'F#', 'G#', 'A', 'B', 'C#', 'D#'], 'type': 'major'},
+            'B': {'notes': ['B', 'C#', 'D#', 'E', 'F#', 'G#', 'A#'], 'type': 'major'},
+            'F#': {'notes': ['F#', 'G#', 'A#', 'B', 'C#', 'D#', 'E#'], 'type': 'major'},
+            'C#': {'notes': ['C#', 'D#', 'E#', 'F#', 'G#', 'A#', 'B#'], 'type': 'major'},
+            'F': {'notes': ['F', 'G', 'A', 'Bb', 'C', 'D', 'E'], 'type': 'major'},
+            'Bb': {'notes': ['Bb', 'C', 'D', 'Eb', 'F', 'G', 'A'], 'type': 'major'},
+            'Eb': {'notes': ['Eb', 'F', 'G', 'Ab', 'Bb', 'C', 'D'], 'type': 'major'},
+            'Ab': {'notes': ['Ab', 'Bb', 'C', 'Db', 'Eb', 'F', 'G'], 'type': 'major'},
+            'Db': {'notes': ['Db', 'Eb', 'F', 'Gb', 'Ab', 'Bb', 'C'], 'type': 'major'},
+            'Gb': {'notes': ['Gb', 'Ab', 'Bb', 'Cb', 'Db', 'Eb', 'F'], 'type': 'major'},
+            'Cb': {'notes': ['Cb', 'Db', 'Eb', 'Fb', 'Gb', 'Ab', 'Bb'], 'type': 'major'},
+            'Am': {'notes': ['A', 'B', 'C', 'D', 'E', 'F', 'G'], 'type': 'minor'},
+            'Em': {'notes': ['E', 'F#', 'G', 'A', 'B', 'C', 'D'], 'type': 'minor'},
+            'Bm': {'notes': ['B', 'C#', 'D', 'E', 'F#', 'G', 'A'], 'type': 'minor'},
+            'F#m': {'notes': ['F#', 'G#', 'A', 'B', 'C#', 'D', 'E'], 'type': 'minor'},
+            'C#m': {'notes': ['C#', 'D#', 'E', 'F#', 'G#', 'A', 'B'], 'type': 'minor'},
+            'G#m': {'notes': ['G#', 'A#', 'B', 'C#', 'D#', 'E', 'F#'], 'type': 'minor'},
+            'D#m': {'notes': ['D#', 'E#', 'F#', 'G#', 'A#', 'B', 'C#'], 'type': 'minor'},
+            'A#m': {'notes': ['A#', 'B#', 'C#', 'D#', 'E#', 'F#', 'G#'], 'type': 'minor'},
+            'Dm': {'notes': ['D', 'E', 'F', 'G', 'A', 'Bb', 'C'], 'type': 'minor'},
+            'Gm': {'notes': ['G', 'A', 'Bb', 'C', 'D', 'Eb', 'F'], 'type': 'minor'},
+            'Cm': {'notes': ['C', 'D', 'Eb', 'F', 'G', 'Ab', 'Bb'], 'type': 'minor'},
+            'Fm': {'notes': ['F', 'G', 'Ab', 'Bb', 'C', 'Db', 'Eb'], 'type': 'minor'},
+            'Bbm': {'notes': ['Bb', 'C', 'Db', 'Eb', 'F', 'Gb', 'Ab'], 'type': 'minor'},
+            'Ebm': {'notes': ['Eb', 'F', 'Gb', 'Ab', 'Bb', 'Cb', 'Db'], 'type': 'minor'},
+            'Abm': {'notes': ['Ab', 'Bb', 'Cb', 'Db', 'Eb', 'Fb', 'Gb'], 'type': 'minor'}
+        }
+        
+        # Get key information
+        key_data = key_info.get(params.key, key_info['C'])  # Default to C if key not found
+        key_notes = key_data['notes']
+        key_type = key_data['type']
+        
+        # Convert note names to MIDI numbers
+        note_to_midi = {
+            'C': 60, 'C#': 61, 'D': 62, 'D#': 63, 'E': 64, 'F': 65, 'F#': 66,
+            'G': 67, 'G#': 68, 'A': 69, 'A#': 70, 'B': 71, 'Bb': 70, 'Eb': 63,
+            'Ab': 68, 'Db': 61, 'Gb': 66, 'Cb': 59, 'Fb': 64, 'E#': 65, 'B#': 72
+        }
+        
+        # Get available notes in the key
+        available_notes = []
+        for note in key_notes:
+            midi_note = note_to_midi.get(note, 60)
+            available_notes.append(midi_note)
+        
+        # Define scale patterns for different styles (relative to key)
         scale_patterns = {
             GuitarStyle.BLUES: [0, 3, 5, 6, 7, 10],  # Blues scale
             GuitarStyle.ROCK: [0, 2, 4, 5, 7, 9, 11],  # Major scale
@@ -181,9 +237,14 @@ class MusicLMGenerator(MusicAIGenerator):
             GuitarStyle.FUNK: [0, 2, 4, 5, 7, 9, 11]  # Major scale
         }
         
-        pattern = scale_patterns.get(params.style, [0, 2, 4, 5, 7, 9, 11])
-        base_notes = [60 + note for note in pattern]  # Start from middle C
+        # Use key-appropriate scale pattern
+        if key_type == 'minor' and params.style in [GuitarStyle.ROCK, GuitarStyle.COUNTRY, GuitarStyle.CLASSICAL, GuitarStyle.FUNK]:
+            # Use minor scale for minor keys
+            pattern = [0, 2, 3, 5, 7, 8, 10]
+        else:
+            pattern = scale_patterns.get(params.style, [0, 2, 4, 5, 7, 9, 11])
         
+        # Generate notes based on key and style
         notes = []
         beats_per_bar = 4
         total_beats = params.length_bars * beats_per_bar
@@ -192,7 +253,8 @@ class MusicLMGenerator(MusicAIGenerator):
         for beat in range(total_beats):
             # Add some randomness to note selection
             if np.random.random() < 0.8:  # 80% chance of playing a note
-                note_pitch = np.random.choice(base_notes)
+                # Choose from available notes in the key
+                note_pitch = np.random.choice(available_notes)
                 
                 # Add octave variation
                 octave_shift = np.random.choice([-12, 0, 12])
@@ -216,6 +278,7 @@ class MusicLMGenerator(MusicAIGenerator):
             "totalTime": total_beats * beat_duration,
             "tempo": params.tempo,
             "style": params.style.value,
+            "key": params.key,
             "length_bars": params.length_bars,
             "complexity": params.complexity
         }
@@ -272,6 +335,7 @@ class GuitarSoloAPI:
                           length_bars: int = 8,
                           tempo: int = 120,
                           complexity: str = "medium",
+                          key: str = "C",
                           custom_description: Optional[str] = None,
                           chord_progression: Optional[List[str]] = None,
                           model: str = "musiclm") -> Dict:
@@ -292,6 +356,7 @@ class GuitarSoloAPI:
             length_bars=length_bars,
             tempo=tempo,
             complexity=complexity,
+            key=key,
             custom_description=custom_description,
             chord_progression=chord_progression
         )
