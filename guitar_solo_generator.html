@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Guitar Solo Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vexflow/4.0.3/vexflow.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@latest"></script>
+    <script src="https://unpkg.com/@magenta/music@^1.23.1/dist/magentamusic.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-group {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .control-group h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        
+        select, input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .notation-container {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .style-presets {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .style-preset {
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .style-preset:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .style-preset.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎸 AI Guitar Solo Generator</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>🎵 Style Selection</h3>
+                <select id="guitarStyle">
+                    <option value="blues">Blues Guitar</option>
+                    <option value="rock">Rock Guitar</option>
+                    <option value="metal">Metal/Shred</option>
+                    <option value="jazz">Jazz Guitar</option>
+                    <option value="country">Country Guitar</option>
+                    <option value="classical">Classical Guitar</option>
+                    <option value="funk">Funk Guitar</option>
+                    <option value="custom">Custom Style</option>
+                </select>
+                
+                <div class="style-presets">
+                    <div class="style-preset" data-style="blues">Blues</div>
+                    <div class="style-preset" data-style="rock">Rock</div>
+                    <div class="style-preset" data-style="metal">Metal</div>
+                    <div class="style-preset" data-style="jazz">Jazz</div>
+                    <div class="style-preset" data-style="country">Country</div>
+                    <div class="style-preset" data-style="classical">Classical</div>
+                </div>
+                
+                <input type="text" id="customStyle" placeholder="Describe your custom style (e.g., 'Santana-style Latin rock solo')" style="display: none;">
+            </div>
+            
+            <div class="control-group">
+                <h3>⚙️ Generation Settings</h3>
+                <label for="soloLength">Solo Length (bars):</label>
+                <select id="soloLength">
+                    <option value="4">4 bars</option>
+                    <option value="8">8 bars</option>
+                    <option value="12">12 bars</option>
+                    <option value="16">16 bars</option>
+                </select>
+                
+                <label for="tempo">Tempo (BPM):</label>
+                <select id="tempo">
+                    <option value="60">Slow (60 BPM)</option>
+                    <option value="80">Medium (80 BPM)</option>
+                    <option value="120" selected>Standard (120 BPM)</option>
+                    <option value="160">Fast (160 BPM)</option>
+                    <option value="200">Very Fast (200 BPM)</option>
+                </select>
+                
+                <label for="complexity">Complexity:</label>
+                <select id="complexity">
+                    <option value="simple">Simple</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="complex">Complex</option>
+                    <option value="virtuoso">Virtuoso</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎼 Input Options</h3>
+                <input type="file" id="midiInput" accept=".mid,.midi" placeholder="Upload MIDI file for influence">
+                <button onclick="uploadMidi()">Upload MIDI</button>
+                
+                <label for="chordProgression">Chord Progression (optional):</label>
+                <input type="text" id="chordProgression" placeholder="e.g., Am G F E">
+                
+                <button onclick="generateSolo()">🎸 Generate Guitar Solo</button>
+            </div>
+        </div>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <div class="notation-container">
+            <h3>🎼 Generated Solo Notation</h3>
+            <div id="notation"></div>
+        </div>
+        
+        <div style="margin-top: 20px; text-align: center;">
+            <button onclick="playSolo()" id="playButton" style="display: none;">▶️ Play Solo</button>
+            <button onclick="downloadMidi()" id="downloadButton" style="display: none;">💾 Download MIDI</button>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentSolo = null;
+        let audioContext = null;
+        let isPlaying = false;
+        
+        // Style presets with detailed descriptions
+        const stylePresets = {
+            blues: {
+                description: "Blues guitar solo with bends, slides, and pentatonic scales",
+                tempo: 80,
+                complexity: "medium",
+                characteristics: ["bends", "slides", "pentatonic", "blues scale"]
+            },
+            rock: {
+                description: "Rock guitar solo with power chords and melodic phrases",
+                tempo: 120,
+                complexity: "medium",
+                characteristics: ["power chords", "melodic", "distortion"]
+            },
+            metal: {
+                description: "Metal shredding with fast runs and technical passages",
+                tempo: 160,
+                complexity: "virtuoso",
+                characteristics: ["fast runs", "technical", "shredding", "tapping"]
+            },
+            jazz: {
+                description: "Jazz guitar solo with complex harmonies and improvisation",
+                tempo: 120,
+                complexity: "complex",
+                characteristics: ["jazz harmony", "improvisation", "chromatic"]
+            },
+            country: {
+                description: "Country guitar with twang and traditional licks",
+                tempo: 100,
+                complexity: "medium",
+                characteristics: ["twang", "traditional licks", "bends"]
+            },
+            classical: {
+                description: "Classical guitar with arpeggios and fingerpicking",
+                tempo: 80,
+                complexity: "complex",
+                characteristics: ["arpeggios", "fingerpicking", "classical"]
+            }
+        };
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            setupStylePresets();
+            setupEventListeners();
+        });
+        
+        function setupStylePresets() {
+            const presets = document.querySelectorAll('.style-preset');
+            presets.forEach(preset => {
+                preset.addEventListener('click', function() {
+                    // Remove active class from all presets
+                    presets.forEach(p => p.classList.remove('active'));
+                    // Add active class to clicked preset
+                    this.classList.add('active');
+                    
+                    const style = this.dataset.style;
+                    document.getElementById('guitarStyle').value = style;
+                    
+                    // Update settings based on style
+                    if (stylePresets[style]) {
+                        document.getElementById('tempo').value = stylePresets[style].tempo;
+                        document.getElementById('complexity').value = stylePresets[style].complexity;
+                    }
+                });
+            });
+        }
+        
+        function setupEventListeners() {
+            document.getElementById('guitarStyle').addEventListener('change', function() {
+                const customInput = document.getElementById('customStyle');
+                if (this.value === 'custom') {
+                    customInput.style.display = 'block';
+                } else {
+                    customInput.style.display = 'none';
+                }
+            });
+        }
+        
+        function showStatus(message, type = 'loading') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+        
+        function hideStatus() {
+            document.getElementById('status').style.display = 'none';
+        }
+        
+        async function generateSolo() {
+            showStatus('🎸 Generating guitar solo...', 'loading');
+            
+            try {
+                // Get user settings
+                const style = document.getElementById('guitarStyle').value;
+                const customStyle = document.getElementById('customStyle').value;
+                const length = document.getElementById('soloLength').value;
+                const tempo = document.getElementById('tempo').value;
+                const complexity = document.getElementById('complexity').value;
+                
+                // Create style description
+                let styleDescription = style;
+                if (style === 'custom' && customStyle) {
+                    styleDescription = customStyle;
+                } else if (stylePresets[style]) {
+                    styleDescription = stylePresets[style].description;
+                }
+                
+                // Simulate AI generation (replace with actual API calls)
+                await simulateGeneration(styleDescription, length, tempo, complexity);
+                
+                showStatus('✅ Solo generated successfully!', 'success');
+                document.getElementById('playButton').style.display = 'inline-block';
+                document.getElementById('downloadButton').style.display = 'inline-block';
+                
+            } catch (error) {
+                showStatus('❌ Error generating solo: ' + error.message, 'error');
+            }
+        }
+        
+        async function simulateGeneration(style, length, tempo, complexity) {
+            // Simulate API delay
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Generate mock solo data (replace with actual AI model)
+            currentSolo = generateMockSolo(style, length, tempo, complexity);
+            
+            // Display notation
+            renderNotation(currentSolo);
+        }
+        
+        function generateMockSolo(style, length, tempo, complexity) {
+            // This is a placeholder - replace with actual AI generation
+            const notes = [];
+            const baseNotes = [60, 62, 64, 65, 67, 69, 71, 72]; // C major scale
+            const bars = parseInt(length);
+            
+            for (let bar = 0; bar < bars; bar++) {
+                for (let beat = 0; beat < 4; beat++) {
+                    const note = baseNotes[Math.floor(Math.random() * baseNotes.length)];
+                    notes.push({
+                        pitch: note,
+                        startTime: (bar * 4 + beat) * 0.5,
+                        endTime: (bar * 4 + beat + 0.5) * 0.5,
+                        velocity: 80
+                    });
+                }
+            }
+            
+            return {
+                notes: notes,
+                totalTime: bars * 2,
+                tempo: tempo,
+                style: style
+            };
+        }
+        
+        function renderNotation(solo) {
+            const notationDiv = document.getElementById('notation');
+            notationDiv.innerHTML = '';
+            
+            // Create VexFlow rendering
+            const vf = new Vex.Flow.Factory({
+                renderer: { elementId: 'notation', width: 800, height: 200 }
+            });
+            
+            const score = vf.EasyScore();
+            const system = vf.System({ x: 10, y: 10, width: 780 });
+            
+            // Convert notes to VexFlow format
+            const formattedNotes = solo.notes.map(note => {
+                const noteName = getNoteName(note.pitch);
+                return `${noteName}/q`;
+            }).join(', ');
+            
+            system.addStave({
+                voices: [score.voice(score.notes(formattedNotes, { stem: 'up' }))]
+            }).addClef('treble').addTimeSignature('4/4');
+            
+            vf.draw();
+        }
+        
+        function getNoteName(midiNote) {
+            const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const note = midiNote % 12;
+            const octave = Math.floor(midiNote / 12) - 1;
+            return `${noteNames[note]}${octave}`;
+        }
+        
+        function uploadMidi() {
+            const fileInput = document.getElementById('midiInput');
+            const file = fileInput.files[0];
+            
+            if (file) {
+                showStatus('📁 Processing MIDI file...', 'loading');
+                // Process MIDI file for influence
+                // This would integrate with your existing MIDI processing code
+                setTimeout(() => {
+                    showStatus('✅ MIDI file processed successfully!', 'success');
+                }, 1000);
+            } else {
+                showStatus('❌ Please select a MIDI file', 'error');
+            }
+        }
+        
+        function playSolo() {
+            if (!currentSolo) {
+                showStatus('❌ No solo to play', 'error');
+                return;
+            }
+            
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            if (isPlaying) {
+                audioContext.resume();
+            } else {
+                playNotes(currentSolo.notes);
+                isPlaying = true;
+            }
+        }
+        
+        function playNotes(notes) {
+            notes.forEach((note, index) => {
+                setTimeout(() => {
+                    playNote(note.pitch, note.velocity);
+                }, note.startTime * 1000);
+            });
+        }
+        
+        function playNote(pitch, velocity) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            const frequency = 440 * Math.pow(2, (pitch - 69) / 12);
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            
+            gainNode.gain.setValueAtTime(velocity / 127, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+        
+        function downloadMidi() {
+            if (!currentSolo) {
+                showStatus('❌ No solo to download', 'error');
+                return;
+            }
+            
+            // Convert solo to MIDI format and download
+            // This would use a MIDI library to create the file
+            showStatus('💾 Downloading MIDI file...', 'loading');
+            
+            setTimeout(() => {
+                showStatus('✅ MIDI file downloaded!', 'success');
+            }, 1000);
+        }
+    </script>
+</body>
+</html> 

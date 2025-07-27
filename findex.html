@@ -1,0 +1,185 @@
+<!--edited by noahlarbalestier, student of Prof. Michael Casey, Dartmouth College. May 2024-->
+
+<html>
+  <head>
+    <!-- Required scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vexflow/3.0.9/vexflow-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@magenta/music@1.9.0"></script>
+    //Using model/checkpoints found online from: https://github.com/magenta/magenta-js/blob/master/music/checkpoints/README.md
+    <script>
+      const mvae = new mm.MusicVAE('https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/mel_4bar_med_lokl_q2');
+      const midime = new mm.MidiMe({epochs: 100})
+
+      let noteSeq1 = null
+      let quantNoteSeq1 = null
+      let sample = null
+      let playableSample = null
+      let displayedNotes = null
+      position = null
+      //this pipe, from here, works on the first 16 notes of the upload (or sample) to display them using VexFlow. Can be manipulated to later play notes using
+      //code like that given in assgt.4 if desired, but these methods are removed.
+      const renderMidi = (noteSeq, offsetHeight) => {
+          const notes = noteSeq.notes
+          let max = -1
+          let min = 128
+          for (note of notes) {
+              if (note.pitch < min) {
+              min = note.pitch
+              }
+              if (note.pitch > max) {
+              max = note.pitch
+              }
+          }
+          vexFlowRendering(notes)
+      }
+      //create factory and use VexFlow library, code I wrote to map midi->acceptable format for display
+      const vexFlowRendering = (notes) => {
+          const formattedNotes = notes.map(note => `${makeVex(note.pitch)}/q`); // Assuming quarter notes        
+          const vf = new Vex.Flow.Factory({
+              renderer: { elementId: 'notation', width: 500, height: 600 }
+          });          
+          const score = vf.EasyScore();
+          let yOffset = 10;  // Initial y offset for the first system
+          // Create multiple systems if more than 4 notes
+          let noteGroups = [];
+          const notesPerGroup = 4; // Adjust based on your needs
+          for (let i = 0; i < formattedNotes.length; i += notesPerGroup) {
+              noteGroups.push(formattedNotes.slice(i, i + notesPerGroup).join(", "));
+          }
+
+          noteGroups.forEach((group, index) => {
+              // Create a new system for each group of notes and increment the y offset
+              const system = vf.System({ x: 10, y: yOffset, width: 450, spaceBetweenStaves: 10 });
+              system.addStave({
+                  voices: [score.voice(score.notes(group, { stem: 'up' }))]
+              }).addClef('treble').addTimeSignature('4/4');
+              yOffset += 120; // Increase y offset for the next system
+          });
+
+          vf.draw();
+        };
+
+         //maps notes in chromatic scale
+      const noteMap = new Map([
+          [0, 'C'],
+          [1, 'C#'],
+          [2, 'D'],
+          [3, 'D#'],
+          [4, 'E'],
+          [5, 'F'],
+          [6, 'F#'],
+          [7, 'G'],
+          [8, 'G#'],
+          [9, 'A'],
+          [10, 'A#'],
+          [11, 'B']
+      ]);  
+
+
+      //make midinumbers readable by vexflow.. i.e. 60-C4
+      //DO I WANT TO KEEP/REFORMAT 3rd POSN?? NO--this is incorrect
+      const makeVex = (note) => {
+          const newO = parseInt(document.getElementById('octaveSelector').value, 10);          
+          const noteName = noteMap.get(note % 12);          
+          const octave = Math.floor(note / 12)-1;
+          const adjustedOctave = octave + newO;
+          return `${noteName}${adjustedOctave}`;
+      }
+
+      //take in midi file
+      const upload = async () => {
+        const file = document.getElementById("input").files[0]
+        noteSeq1 = await mm.blobToNoteSequence(file)  
+        quantNoteSeq1 = mm.sequences.quantizeNoteSequence(noteSeq1, 4)
+
+        //only display first 16 notes
+        
+        let displayedNotes = mm.sequences.clone(quantNoteSeq1);
+        displayedNotes.notes = quantNoteSeq1.notes.slice(0, 16);
+        clearNotation();
+        //send only the notes to display to render midi
+        renderMidi(displayedNotes, 0)
+      }
+      //train using midiME
+      //Credit to former Dartmouth Student Matt Keating on many implementation style choices, influence for this code
+        const train = async () => {
+        
+            document.getElementById("initialization").style.visibility = "visible";
+            // Initialize the RNN for continueSequence and the vae for interpolate
+            // await mrnn.initialize()
+            await mvae.initialize()
+            await midime.initialize()
+
+            document.getElementById("initialization").style.visibility = "hidden";
+            const data = await mvae.encode([quantNoteSeq1])
+
+            let epochDisplayText = document.getElementById("epochsText")
+            await midime.train(data, async (epoch, logs) => {
+              epochDisplayText.innerHTML = "Epoch " + (epoch + 1) + " / 100"
+            })
+          }
+
+          const clearNotation = () => {
+              const notationElement = document.getElementById('notation');
+              notationElement.innerHTML = '';  // Clear the content of the notation div
+          }
+
+
+        const sampleModel = async () => {
+          // get one sample, still trains on everything but only displays 16 notes!
+          clearNotation();
+          sample = await midime.sample(8)
+
+          const sequences = await mvae.decode(sample)
+          playableSample = mm.sequences.concatenate([...sequences])
+          if (playableSample.notes.length > 16) {
+            playableSample.notes = playableSample.notes.slice(0, 16);
+        }
+          renderMidi(playableSample, 400)
+        }
+
+
+    </script>
+  </head>
+  <body>
+    <div style="padding-left: 20px;">
+      <h1>Noah's Note Buddy</h1>
+    </div>
+      <div>
+        <input type="file" id="input" accept=".midi,.mid"/>
+        <button onclick="upload()">
+          Display Upload File
+        </button>
+      </div>
+      <div>
+        <button onclick="train()">
+          Train with File
+        </button>
+      </div>
+      <div>
+        <label for="octaveSelector">Change Octave:</label>
+        <select id="octaveSelector">
+            <option value="1">Same</option>
+            <option value="2">Up One</option>
+            <option value="0">Down One</option>
+        </select>
+    </div>
+      <div>
+        <p id="initialization" style="visibility: hidden">Initializing Models...</p>
+        <p id="epochsText">Epoch 0 / 100</p>
+      </div>
+      <div style="width: 400px">
+        <p>To generate music, first upload any midi file and display it on the screen. You will see the first 16 notes of the piece, and then you can 
+          train using the file and Magenta's MidiMe software. Once the Epoch count reaches 100, pressing the sample button will continuously generate new
+          4-bar melodies similar to the influence file!
+        </p>
+      </div>
+      <div>
+        <button id="sample" onclick="sampleModel()">Sample</button>
+      </div>
+      <div id="notation" style="width: 500px; height: 600px; border: 1px solid black;"></div>
+      
+      <div id="notation"></div>
+  </body>
+</html>
