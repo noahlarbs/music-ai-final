@@ -1,6 +1,6 @@
-# 🎸 AI Guitar Solo Generator
+# Guitar Solo Generator
 
-A modern web application that generates guitar solos in different styles using AI. This project expands on your original Magenta-based system with support for newer AI music generation models.
+A  web application that generates guitar solos in different styles using AI. This project expands on your original Magenta-based system with support for newer AI music generation models.
 
 ## 🚀 Features
 
@@ -12,7 +12,7 @@ A modern web application that generates guitar solos in different styles using A
 - **Style Presets**: Quick selection of popular guitar styles
 - **Custom Descriptions**: Create your own style descriptions
 
-## 🎯 Modern AI Models Supported
+## Some music generation model APIs supported
 
 ### 1. **MusicLM (Google)**
 - **Text-to-music generation** with style conditioning
@@ -26,21 +26,11 @@ A modern web application that generates guitar solos in different styles using A
 - **Local deployment** possible
 - **Best for**: Custom style generation
 
-### 3. **Riffusion**
-- **Real-time music generation** with style transfer
-- **Web-based interface** integration
-- **Good for**: Guitar riffs and short solos
-
-### 4. **Jukebox (OpenAI)**
-- **Full-song generation** with multiple genres
-- **Higher computational requirements**
-- **Best for**: Complete guitar compositions
-
-## 🛠️ Setup Instructions
+## Setup 
 
 ### Prerequisites
 - Python 3.8+
-- Node.js (optional, for development)
+- Node.js (for dev)
 
 ### 1. Install Dependencies
 
@@ -80,7 +70,7 @@ uvicorn api_server:app --host 0.0.0.0 --port 8000 --reload
 - **API Documentation**: http://localhost:8000/docs
 - **Health Check**: http://localhost:8000/api/health
 
-## 🎵 Usage
+## Usage
 
 ### Web Interface
 
@@ -192,33 +182,9 @@ The system processes MIDI data in the following format:
 }
 ```
 
-## 🔮 Future Enhancements
+## Future Enhancements
 
-### Planned Features
-
-1. **Real AI Model Integration**
-   - Direct MusicLM API integration
-   - Local AudioCraft model deployment
-   - Riffusion style transfer
-
-2. **Advanced Features**
-   - Chord progression analysis
-   - Scale-aware generation
-   - Guitar technique simulation (bends, slides, etc.)
-
-3. **User Experience**
-   - Real-time audio preview
-   - Style mixing and blending
-   - Collaborative solo creation
-
-### Model Integration Roadmap
-
-1. **Phase 1**: Mock generation with realistic patterns
-2. **Phase 2**: MusicLM API integration
-3. **Phase 3**: Local AudioCraft deployment
-4. **Phase 4**: Advanced style transfer
-
-## 🤝 Contributing
+##  Contributing
 
 ### Development Setup
 
@@ -248,7 +214,7 @@ flake8 .
 3. Add the model to the `GuitarSoloAPI` generators dict
 4. Update the frontend to include the new model option
 
-## 📚 Resources
+##  Resources
 
 ### AI Music Generation Models
 
@@ -269,11 +235,9 @@ flake8 .
 - [VexFlow Documentation](https://vexflow.com/)
 - [Tone.js](https://tonejs.github.io/)
 
-## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - **Original Project**: Your Magenta-based music generation system
 - **Dartmouth College**: CS 89/189 MUS14 course with Prof. Michael Casey
