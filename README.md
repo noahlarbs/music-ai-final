@@ -2,7 +2,7 @@
 
 A  web application that generates guitar solos in different styles using AI. This project expands on your original Magenta-based system with support for newer AI music generation models.
 
-## 🚀 Features
+## Features
 
 - **Multiple Guitar Styles**: Blues, Rock, Metal, Jazz, Country, Classical, Funk
 - **AI Model Integration**: Support for MusicLM, AudioCraft, and other modern models
@@ -110,7 +110,7 @@ curl "http://localhost:8000/api/styles"
 curl "http://localhost:8000/api/health"
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Style Presets
 
@@ -145,7 +145,7 @@ generators = {
 }
 ```
 
-## 🎼 Technical Details
+##  Technical Details
 
 ### Architecture
 
