@@ -110,51 +110,53 @@ const renderMidi = (noteSeq) => {
  */
 const vexFlowRendering = (notes) => {
     clearNotation();
+    
+    const selectedPosition = parseInt(positionSelector.value, 10);
+    
+    // Convert notes to VexFlow format with positional information
+    const formattedNotes = notes.map(note => {
+        const locations = noteToFret(note.pitch);
+        const bestLocation = getBestLocation(locations, selectedPosition);
+        
+        // Create the basic note string for VexFlow
+        const vexNote = `${makeVex(note.pitch)}/q`;
+        
+        // Store location info for annotations (we'll add this feature back later)
+        return {
+            vexNote: vexNote,
+            location: bestLocation,
+            originalPitch: note.pitch
+        };
+    });
+    
+    // Use the original working VexFlow approach
     const vf = new Vex.Flow.Factory({
         renderer: { elementId: 'notation', width: 1000, height: 600 }
     });
     const score = vf.EasyScore();
-    const beams = [];
+    let yOffset = 10;
     
-    let currentVoiceNotes = [];
-    let x = 10;
-    
-    const selectedPosition = parseInt(positionSelector.value, 10);
-    const vexNotes = [];
+    // Create note groups
+    let noteGroups = [];
+    const notesPerGroup = 4;
+    for (let i = 0; i < formattedNotes.length; i += notesPerGroup) {
+        const group = formattedNotes.slice(i, i + notesPerGroup);
+        const groupString = group.map(n => n.vexNote).join(", ");
+        noteGroups.push({
+            notes: groupString,
+            locations: group.map(n => n.location)
+        });
+    }
 
-    notes.forEach(note => {
-        const locations = noteToFret(note.pitch);
-        const bestLocation = getBestLocation(locations, selectedPosition);
-
-        if (bestLocation) {
-            const vexNote = new Vex.Flow.StaveNote({
-                keys: [`${noteMap.get(note.pitch % 12)}/${Math.floor(note.pitch / 12) - 1}`],
-                duration: "q"
-            });
-
-            // Add string and fingering annotations
-            const finger = bestLocation.fret - selectedPosition + 1;
-            if (selectedPosition > 0 && finger > 0 && finger < 5) {
-                vexNote.addAnnotation(0, new Vex.Flow.Annotation(finger.toString()).setJustification(2).setVerticalJustification(3));
-            }
-            vexNote.addAnnotation(0, new Vex.Flow.Annotation(`(${bestLocation.string})`).setJustification(2).setVerticalJustification(4));
-            
-            vexNotes.push(vexNote);
-        }
+    noteGroups.forEach((group, index) => {
+        // Create a new system for each group of notes
+        const system = vf.System({ x: 10, y: yOffset, width: 950, spaceBetweenStaves: 10 });
+        system.addStave({
+            voices: [score.voice(score.notes(group.notes, { stem: 'up' }))]
+        }).addClef('treble').addTimeSignature('4/4');
+        yOffset += 120;
     });
 
-    if (vexNotes.length > 0) {
-        let yOffset = 10;
-        for (let i = 0; i < vexNotes.length; i += 4) {
-            const group = vexNotes.slice(i, i + 4);
-            const system = vf.System({ x: 10, y: yOffset, width: 475, spaceBetweenStaves: 10 });
-            system.addStave({
-                voices: [new Vex.Flow.Voice({num_beats: group.length, beat_value: 4}).addTickables(group)]
-            }).addClef('treble').addTimeSignature('4/4');
-            yOffset += 120;
-        }
-    }
-    
     vf.draw();
 };
 
