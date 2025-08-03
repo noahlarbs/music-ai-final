@@ -35,47 +35,168 @@ const TUNINGS = {
 
 const FRET_COUNT = 19;
 
+// Classical guitar position definitions
+const POSITIONS = {
+    1: { name: "I", fretRange: [0, 4], baseFret: 1 },
+    2: { name: "II", fretRange: [2, 5], baseFret: 2 },
+    3: { name: "III", fretRange: [5, 8], baseFret: 5 },
+    4: { name: "IV", fretRange: [7, 10], baseFret: 7 },
+    5: { name: "V", fretRange: [9, 12], baseFret: 9 }
+};
+
 /**
  * Returns all possible fret/string combinations for a given MIDI note.
  * @param {number} midi - The MIDI note number.
  * @param {Array<number>} tuning - The tuning of the guitar.
- * @returns {Array<{string: number, fret: number}>}
+ * @returns {Array<{string: number, fret: number, finger: number}>}
  */
 function noteToFret(midi, tuning = TUNINGS.standard) {
     const locations = [];
     for (let i = 0; i < tuning.length; i++) {
         const fret = midi - tuning[i];
         if (fret >= 0 && fret <= FRET_COUNT) {
-            locations.push({ string: i + 1, fret });
+            locations.push({ 
+                string: i + 1, 
+                fret: fret,
+                finger: 0 // Will be calculated based on position
+            });
         }
     }
     return locations;
 }
 
 /**
- * Selects the best fret/string location based on the desired position.
+ * Enhanced algorithm that selects the best fret/string location based on position and ergonomics.
  * @param {Array<{string: number, fret: number}>} locations - Possible locations for a note.
- * @param {number} position - The desired fretboard position.
- * @returns {{string: number, fret: number}|null}
+ * @param {number} position - The desired position (1-5, or 0 for automatic).
+ * @param {Object} previousNote - Previous note info for context.
+ * @returns {{string: number, fret: number, finger: number, position: number}|null}
  */
-function getBestLocation(locations, position) {
+function getBestLocation(locations, position, previousNote = null) {
     if (locations.length === 0) return null;
-    if (position === 0) { // Automatic
-        return locations.sort((a, b) => a.fret - b.fret)[0];
+    
+    // If automatic, find the best overall position
+    if (position === 0) {
+        return getBestAutomaticLocation(locations, previousNote);
     }
-
+    
+    const positionInfo = POSITIONS[position];
+    if (!positionInfo) return null;
+    
+    const [minFret, maxFret] = positionInfo.fretRange;
+    const baseFret = positionInfo.baseFret;
+    
+    // Filter locations that fit within the position
     const validLocations = locations.filter(loc => {
-        if (loc.fret === 0) return false;
-        return loc.fret >= position && loc.fret < position + 5;
+        if (loc.fret === 0) return position === 1; // Open strings only in position I
+        return loc.fret >= minFret && loc.fret <= maxFret;
     });
-
-    if (validLocations.length > 0) {
-        return validLocations[0];
-    } else if (locations.length > 0) {
-        // Fallback to the lowest possible fret if no ideal position is found
-        return locations.sort((a, b) => Math.abs(a.fret - position) - Math.abs(b.fret - position))[0];
+    
+    if (validLocations.length === 0) {
+        // Fallback: find closest available location
+        return locations.reduce((best, current) => {
+            const currentDistance = Math.abs(current.fret - baseFret);
+            const bestDistance = best ? Math.abs(best.fret - baseFret) : Infinity;
+            return currentDistance < bestDistance ? current : best;
+        }, null);
     }
-    return null;
+    
+    // Score each valid location
+    let bestLocation = null;
+    let bestScore = Infinity;
+    
+    for (const loc of validLocations) {
+        let score = 0;
+        
+        // Calculate finger assignment
+        const finger = loc.fret === 0 ? 0 : Math.max(1, loc.fret - baseFret + 1);
+        
+        // Prefer reasonable finger assignments (1-4)
+        if (finger > 4) score += 10;
+        
+        // Prefer middle strings for melody
+        if (loc.string === 3 || loc.string === 4) score -= 2;
+        
+        // Consider previous note context for smooth voice leading
+        if (previousNote) {
+            const fretDistance = Math.abs(loc.fret - previousNote.fret);
+            const stringDistance = Math.abs(loc.string - previousNote.string);
+            
+            // Penalize large jumps
+            score += fretDistance * 0.5;
+            score += stringDistance * 1.5;
+            
+            // Reward staying in same position
+            if (Math.abs(loc.fret - previousNote.fret) <= 4) score -= 3;
+        }
+        
+        // Prefer locations closer to the position center
+        const positionCenter = (minFret + maxFret) / 2;
+        score += Math.abs(loc.fret - positionCenter) * 0.3;
+        
+        if (score < bestScore) {
+            bestScore = score;
+            bestLocation = { 
+                ...loc, 
+                finger: finger,
+                position: position
+            };
+        }
+    }
+    
+    return bestLocation;
+}
+
+/**
+ * Automatic position selection - finds the best overall position for a note.
+ */
+function getBestAutomaticLocation(locations, previousNote = null) {
+    let bestLocation = null;
+    let bestScore = Infinity;
+    
+    for (const loc of locations) {
+        let score = 0;
+        
+        // Prefer lower positions for easier playing
+        if (loc.fret <= 5) score -= 2;
+        else if (loc.fret <= 9) score += 1;
+        else score += 3;
+        
+        // Prefer middle strings
+        if (loc.string >= 2 && loc.string <= 5) score -= 1;
+        
+        // Avoid very high frets unless necessary
+        if (loc.fret > 12) score += 5;
+        
+        // Consider previous note context
+        if (previousNote) {
+            const distance = Math.abs(loc.fret - previousNote.fret) + 
+                           Math.abs(loc.string - previousNote.string);
+            score += distance * 0.5;
+        }
+        
+        if (score < bestScore) {
+            bestScore = score;
+            bestLocation = { 
+                ...loc, 
+                finger: loc.fret === 0 ? 0 : Math.min(4, Math.max(1, loc.fret % 4 + 1)),
+                position: determinePosition(loc.fret)
+            };
+        }
+    }
+    
+    return bestLocation;
+}
+
+/**
+ * Determines which position a fret belongs to.
+ */
+function determinePosition(fret) {
+    if (fret <= 4) return 1;
+    if (fret <= 6) return 2;
+    if (fret <= 8) return 3;
+    if (fret <= 10) return 4;
+    return 5;
 }
 
 
@@ -105,7 +226,7 @@ const renderMidi = (noteSeq) => {
 };
 
 /**
- * Uses VexFlow to render the notes as sheet music.
+ * Uses VexFlow to render the notes as sheet music with position indicators.
  * @param {Array<mm.NoteSequence.Note>} notes - An array of notes to render.
  */
 const vexFlowRendering = (notes) => {
@@ -113,23 +234,30 @@ const vexFlowRendering = (notes) => {
     
     const selectedPosition = parseInt(positionSelector.value, 10);
     
-    // Convert notes to VexFlow format with positional information
-    const formattedNotes = notes.map(note => {
+    // Convert notes to VexFlow format with enhanced positional information
+    let previousNote = null;
+    const formattedNotes = notes.map((note, index) => {
         const locations = noteToFret(note.pitch);
-        const bestLocation = getBestLocation(locations, selectedPosition);
+        const bestLocation = getBestLocation(locations, selectedPosition, previousNote);
+        
+        // Update previous note for context
+        if (bestLocation) {
+            previousNote = bestLocation;
+        }
         
         // Create the basic note string for VexFlow
         const vexNote = `${makeVex(note.pitch)}/q`;
         
-        // Store location info for annotations (we'll add this feature back later)
+        // Store comprehensive location info
         return {
             vexNote: vexNote,
             location: bestLocation,
-            originalPitch: note.pitch
+            originalPitch: note.pitch,
+            noteIndex: index
         };
     });
     
-    // Use the original working VexFlow approach
+    // Use VexFlow to render
     const vf = new Vex.Flow.Factory({
         renderer: { elementId: 'notation', width: 1000, height: 600 }
     });
@@ -144,20 +272,56 @@ const vexFlowRendering = (notes) => {
         const groupString = group.map(n => n.vexNote).join(", ");
         noteGroups.push({
             notes: groupString,
-            locations: group.map(n => n.location)
+            locations: group.map(n => n.location),
+            isFirstGroup: i === 0
         });
     }
 
-    noteGroups.forEach((group, index) => {
+    noteGroups.forEach((group, groupIndex) => {
         // Create a new system for each group of notes
         const system = vf.System({ x: 10, y: yOffset, width: 950, spaceBetweenStaves: 10 });
-        system.addStave({
+        
+        // Add position indicator on the first group if a specific position is selected
+        let staveOptions = {
             voices: [score.voice(score.notes(group.notes, { stem: 'up' }))]
-        }).addClef('treble').addTimeSignature('4/4');
+        };
+        
+        const stave = system.addStave(staveOptions).addClef('treble').addTimeSignature('4/4');
+        
+        // Add Roman numeral position indicator
+        if (group.isFirstGroup && selectedPosition > 0) {
+            const positionName = POSITIONS[selectedPosition]?.name;
+            if (positionName) {
+                // Add position marking above the staff
+                const context = vf.getContext();
+                context.save();
+                context.setFont('Arial', 14, 'bold');
+                context.fillText(`Pos. ${positionName}`, 15, yOffset - 10);
+                context.restore();
+            }
+        }
+        
         yOffset += 120;
     });
 
     vf.draw();
+    
+    // Log position analysis for debugging
+    if (selectedPosition > 0) {
+        const positionName = POSITIONS[selectedPosition]?.name || selectedPosition;
+        console.log(`🎸 Rendered in Position ${positionName}`);
+        
+        // Show fingering analysis
+        const uniquePositions = new Set();
+        formattedNotes.forEach(note => {
+            if (note.location) {
+                uniquePositions.add(note.location.position || 'auto');
+                console.log(`Note ${note.originalPitch}: String ${note.location.string}, Fret ${note.location.fret}, Finger ${note.location.finger}`);
+            }
+        });
+        
+        console.log(`Positions used: ${Array.from(uniquePositions).join(', ')}`);
+    }
 };
 
 // Map of MIDI pitch values to note names
