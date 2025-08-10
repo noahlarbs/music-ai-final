@@ -6,40 +6,52 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vexflow/3.0.9/vexflow-min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@magenta/music@1.9.0"></script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="header">
       <h1>🎼 Classical Guitar Learning Platform</h1>
-      <p>Upload MIDI files, train AI models, and generate classical guitar exercises</p>
+      <p>
+        Upload MIDI files, train AI models, and generate classical guitar
+        exercises
+      </p>
     </div>
-    
+
     <div class="controls">
       <div class="upload-section">
-        <input type="file" id="input" accept=".midi,.mid"/>
+        <input type="file" id="input" accept=".midi,.mid" />
         <button id="uploadButton" class="btn primary">
           📁 Display Upload File
         </button>
       </div>
-      
+
       <div class="train-section">
         <button id="trainButton" class="btn secondary">
           🧠 Train with File
         </button>
       </div>
-      
+
       <div class="options-section">
         <label for="octaveSelector">Octave Adjustment:</label>
         <select id="octaveSelector">
-            <option value="0">Down One</option>
-            <option value="1" selected>Same</option>
-            <option value="2">Up One (standard for guitar)</option>
+          <option value="0">Down One</option>
+          <option value="1" selected>Same</option>
+          <option value="2">Up One (standard for guitar)</option>
         </select>
       </div>
-      
+
       <div class="options-section">
-        <label for="temperatureSlider">Creativity (Temperature): <span id="tempValue">1.0</span></label>
-        <input type="range" id="temperatureSlider" min="0.1" max="2.0" step="0.1" value="1.0">
+        <label for="temperatureSlider"
+          >Creativity (Temperature): <span id="tempValue">1.0</span></label
+        >
+        <input
+          type="range"
+          id="temperatureSlider"
+          min="0.1"
+          max="2.0"
+          step="0.1"
+          value="1.0"
+        />
       </div>
 
       <div class="options-section">
@@ -53,24 +65,29 @@
           <option value="5">Position V (9th-12th frets)</option>
         </select>
       </div>
-      
+
       <div class="generate-section">
-        <button id="sample" class="btn accent" disabled>🎵 Generate Sample</button>
+        <button id="sample" class="btn accent" disabled>
+          🎵 Generate Sample
+        </button>
       </div>
     </div>
-    
+
     <div class="status-section">
-      <p id="initialization" style="visibility: hidden">🔄 Initializing Models...</p>
+      <p id="initialization" style="visibility: hidden">
+        🔄 Initializing Models...
+      </p>
       <p id="epochsText">Epoch 0 / 100</p>
     </div>
-    
+
     <div class="info-section">
       <p>
-        <strong>Instructions:</strong> Upload a MIDI file to see the first 16 notes displayed as sheet music. 
-        Train the AI model on your file, then generate new classical guitar exercises in a similar style!
+        <strong>Instructions:</strong> Upload a MIDI file to see the first 16
+        notes displayed as sheet music. Train the AI model on your file, then
+        generate new classical guitar exercises in a similar style!
       </p>
     </div>
-    
+
     <div class="notation-container">
       <h3>📝 Musical Notation</h3>
       <div id="notation"></div>
